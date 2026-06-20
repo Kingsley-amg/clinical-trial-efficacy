@@ -23,10 +23,10 @@ suppressMessages({
 theme_set(theme_minimal(base_size = 12))
 PAL <- c("Placebo" = "#9ec7bd", "Indomethacin" = "#2a9d8f")
 ACC <- "#2a9d8f"; CORAL <- "#e76f51"; INK <- "#1d3a34"
-# gtsummary fills empty cells with an em dash that, under a non-UTF-8 locale,
-# prints as "<U+2014>". Strip these so tables read cleanly and contain no dashes.
-strip_dash <- function(x)
-  gsub("&lt;U\\+201[0-9A-F]&gt;|<U\\+201[0-9A-F]>|[\\u2012\\u2013\\u2014\\u2015]", "", x)
+# gtsummary fills empty cells with an em dash that, under the render's C locale,
+# prints as the ASCII text "<U+2014>". We strip only that literal text pattern
+# (pure ASCII, so it can never touch the data digits) to keep tables dash-free.
+strip_dash <- function(x) gsub("&lt;U\\+[0-9A-F]{4}&gt;|<U\\+[0-9A-F]{4}>", "", x)
 
 dat <- read.csv("data/indo_clean.csv", stringsAsFactors = TRUE)
 dat$rx <- factor(dat$rx, levels = c("Placebo", "Indomethacin"))
