@@ -1627,7 +1627,7 @@ We check this first.</p>
                  psphinc ~ &quot;Pancreatic sphincterotomy&quot;, difcan ~ &quot;Difficult cannulation&quot;,
                  train ~ &quot;Trainee involved&quot;),
     digits = all_categorical() ~ c(0, 1)) |&gt;
-  add_p() |&gt;
+  add_p(pvalue_fun = ~ style_pvalue(.x, digits = 3)) |&gt;
   modify_header(label ~ &quot;**Characteristic**&quot;) |&gt;
   modify_caption(&quot;**Table 1. Baseline characteristics by treatment arm**&quot;)
 cat(strip_dash(as_kable(bt)), sep = &quot;\n&quot;)</code></pre>
@@ -1653,55 +1653,55 @@ arm</strong></caption>
 <td align="left">Age, years</td>
 <td align="center">46 (36, 55)</td>
 <td align="center">44 (33, 54)</td>
-<td align="center">0.2</td>
+<td align="center">0.184</td>
 </tr>
 <tr class="even">
 <td align="left">Male sex</td>
 <td align="center">60 (19.5%)</td>
 <td align="center">66 (22.4%)</td>
-<td align="center">0.4</td>
+<td align="center">0.394</td>
 </tr>
 <tr class="odd">
 <td align="left">Risk score</td>
 <td align="center">2.50 (1.50, 3.00)</td>
 <td align="center">2.50 (2.00, 3.00)</td>
-<td align="center">0.3</td>
+<td align="center">0.315</td>
 </tr>
 <tr class="even">
 <td align="left">Higher risk (score &gt;2.5)</td>
 <td align="center">85 (27.7%)</td>
 <td align="center">87 (29.5%)</td>
-<td align="center">0.6</td>
+<td align="center">0.624</td>
 </tr>
 <tr class="odd">
 <td align="left">Prior pancreatitis</td>
 <td align="center">49 (16.0%)</td>
 <td align="center">47 (15.9%)</td>
-<td align="center">&gt;0.9</td>
+<td align="center">0.992</td>
 </tr>
 <tr class="even">
 <td align="left">Sphincter of Oddi dysfunction</td>
 <td align="center">247 (80.5%)</td>
 <td align="center">248 (84.1%)</td>
-<td align="center">0.2</td>
+<td align="center">0.247</td>
 </tr>
 <tr class="odd">
 <td align="left">Pancreatic sphincterotomy</td>
 <td align="center">170 (55.4%)</td>
 <td align="center">173 (58.6%)</td>
-<td align="center">0.4</td>
+<td align="center">0.418</td>
 </tr>
 <tr class="even">
 <td align="left">Difficult cannulation</td>
 <td align="center">77 (25.1%)</td>
 <td align="center">80 (27.1%)</td>
-<td align="center">0.6</td>
+<td align="center">0.569</td>
 </tr>
 <tr class="odd">
 <td align="left">Trainee involved</td>
 <td align="center">140 (45.6%)</td>
 <td align="center">143 (48.5%)</td>
-<td align="center">0.5</td>
+<td align="center">0.480</td>
 </tr>
 </tbody>
 </table>
