@@ -1617,12 +1617,16 @@ inflammation of the pancreas.</p>
 We check this first.</p>
 <pre class="r"><code>bt &lt;- dat |&gt;
   select(rx, age, gender, risk, risk_group, prior_pep, sod, psphinc, difcan, train) |&gt;
-  tbl_summary(by = rx,
-              label = list(age ~ &quot;Age (years)&quot;, gender ~ &quot;Sex&quot;,
-                           risk ~ &quot;Risk score&quot;, risk_group ~ &quot;Risk group&quot;,
-                           prior_pep ~ &quot;Prior pancreatitis&quot;, sod ~ &quot;Sphincter of Oddi dysfunction&quot;,
-                           psphinc ~ &quot;Pancreatic sphincterotomy&quot;, difcan ~ &quot;Difficult cannulation&quot;,
-                           train ~ &quot;Trainee involved&quot;)) |&gt;
+  tbl_summary(
+    by    = rx,
+    type  = list(gender ~ &quot;dichotomous&quot;, risk_group ~ &quot;dichotomous&quot;),
+    value = list(gender ~ &quot;Male&quot;, risk_group ~ &quot;Higher risk (&gt;2.5)&quot;),
+    label = list(age ~ &quot;Age, years&quot;, gender ~ &quot;Male sex&quot;,
+                 risk ~ &quot;Risk score&quot;, risk_group ~ &quot;Higher risk (score &gt;2.5)&quot;,
+                 prior_pep ~ &quot;Prior pancreatitis&quot;, sod ~ &quot;Sphincter of Oddi dysfunction&quot;,
+                 psphinc ~ &quot;Pancreatic sphincterotomy&quot;, difcan ~ &quot;Difficult cannulation&quot;,
+                 train ~ &quot;Trainee involved&quot;),
+    digits = all_categorical() ~ c(0, 1)) |&gt;
   add_p() |&gt;
   modify_header(label ~ &quot;**Characteristic**&quot;) |&gt;
   modify_caption(&quot;**Table 1. Baseline characteristics by treatment arm**&quot;)
@@ -1646,28 +1650,16 @@ arm</strong></caption>
 </thead>
 <tbody>
 <tr class="odd">
-<td align="left">Age (years)</td>
+<td align="left">Age, years</td>
 <td align="center">6 (6, )</td>
 <td align="center">(, )</td>
 <td align="center">.</td>
 </tr>
 <tr class="even">
-<td align="left">Sex</td>
-<td align="center"></td>
-<td align="center"></td>
+<td align="left">Male sex</td>
+<td align="center">6 (9.%)</td>
+<td align="center">66 (.%)</td>
 <td align="center">.</td>
-</tr>
-<tr class="odd">
-<td align="left">Female</td>
-<td align="center">7 (8%)</td>
-<td align="center">9 (78%)</td>
-<td align="center"></td>
-</tr>
-<tr class="even">
-<td align="left">Male</td>
-<td align="center">6 (%)</td>
-<td align="center">66 (%)</td>
-<td align="center"></td>
 </tr>
 <tr class="odd">
 <td align="left">Risk score</td>
@@ -1676,51 +1668,39 @@ arm</strong></caption>
 <td align="center">.</td>
 </tr>
 <tr class="even">
-<td align="left">Risk grop</td>
-<td align="center"></td>
-<td align="center"></td>
+<td align="left">Higher risk (score &gt;.)</td>
+<td align="center">8 (7.7%)</td>
+<td align="center">87 (9.%)</td>
 <td align="center">.6</td>
 </tr>
 <tr class="odd">
-<td align="left">Higher risk (&gt;.)</td>
-<td align="center">8 (8%)</td>
-<td align="center">87 (9%)</td>
-<td align="center"></td>
-</tr>
-<tr class="even">
-<td align="left">Lower risk (&lt;=.)</td>
-<td align="center">(7%)</td>
-<td align="center">8 (7%)</td>
-<td align="center"></td>
-</tr>
-<tr class="odd">
 <td align="left">Prior pancreatitis</td>
-<td align="center">9 (6%)</td>
-<td align="center">7 (6%)</td>
+<td align="center">9 (6.%)</td>
+<td align="center">7 (.9%)</td>
 <td align="center">&gt;.9</td>
 </tr>
 <tr class="even">
 <td align="left">Sphincter of Oddi dysfnction</td>
-<td align="center">7 (8%)</td>
-<td align="center">8 (8%)</td>
+<td align="center">7 (8.%)</td>
+<td align="center">8 (8.%)</td>
 <td align="center">.</td>
 </tr>
 <tr class="odd">
 <td align="left">Pancreatic sphincterotomy</td>
-<td align="center">7 (%)</td>
-<td align="center">7 (9%)</td>
+<td align="center">7 (.%)</td>
+<td align="center">7 (8.6%)</td>
 <td align="center">.</td>
 </tr>
 <tr class="even">
 <td align="left">Difficlt cannlation</td>
-<td align="center">77 (%)</td>
-<td align="center">8 (7%)</td>
+<td align="center">77 (.%)</td>
+<td align="center">8 (7.%)</td>
 <td align="center">.6</td>
 </tr>
 <tr class="odd">
 <td align="left">Trainee involved</td>
-<td align="center">(6%)</td>
-<td align="center">(8%)</td>
+<td align="center">(.6%)</td>
+<td align="center">(8.%)</td>
 <td align="center">.</td>
 </tr>
 </tbody>

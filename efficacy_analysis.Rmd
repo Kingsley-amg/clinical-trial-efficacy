@@ -71,12 +71,16 @@ this first.
 ```{r baseline, results='asis'}
 bt <- dat |>
   select(rx, age, gender, risk, risk_group, prior_pep, sod, psphinc, difcan, train) |>
-  tbl_summary(by = rx,
-              label = list(age ~ "Age (years)", gender ~ "Sex",
-                           risk ~ "Risk score", risk_group ~ "Risk group",
-                           prior_pep ~ "Prior pancreatitis", sod ~ "Sphincter of Oddi dysfunction",
-                           psphinc ~ "Pancreatic sphincterotomy", difcan ~ "Difficult cannulation",
-                           train ~ "Trainee involved")) |>
+  tbl_summary(
+    by    = rx,
+    type  = list(gender ~ "dichotomous", risk_group ~ "dichotomous"),
+    value = list(gender ~ "Male", risk_group ~ "Higher risk (>2.5)"),
+    label = list(age ~ "Age, years", gender ~ "Male sex",
+                 risk ~ "Risk score", risk_group ~ "Higher risk (score >2.5)",
+                 prior_pep ~ "Prior pancreatitis", sod ~ "Sphincter of Oddi dysfunction",
+                 psphinc ~ "Pancreatic sphincterotomy", difcan ~ "Difficult cannulation",
+                 train ~ "Trainee involved"),
+    digits = all_categorical() ~ c(0, 1)) |>
   add_p() |>
   modify_header(label ~ "**Characteristic**") |>
   modify_caption("**Table 1. Baseline characteristics by treatment arm**")
