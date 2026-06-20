@@ -1,0 +1,279 @@
+---
+title: "Treatment Efficacy Analysis of a Randomised Trial"
+subtitle: "Does rectal indomethacin prevent post-ERCP pancreatitis? Effect size, NNT and subgroups"
+author: "Kingsley Amegah"
+date: "`r format(Sys.Date(), '%B %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+    theme: flatly
+    code_folding: hide
+    df_print: kable
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width = 9, fig.height = 5.2, fig.align = "center")
+suppressMessages({
+  library(dplyr); library(forcats); library(broom)
+  library(gtsummary); library(ggplot2); library(scales)
+})
+theme_set(theme_minimal(base_size = 12))
+PAL <- c("Placebo" = "#9ec7bd", "Indomethacin" = "#2a9d8f")
+ACC <- "#2a9d8f"; CORAL <- "#e76f51"; INK <- "#1d3a34"
+# gtsummary fills empty cells with an em dash that, under a non-UTF-8 locale,
+# prints as "<U+2014>". Strip these so tables read cleanly and contain no dashes.
+strip_dash <- function(x)
+  gsub("&lt;U\\+201[0-9A-F]&gt;|<U\\+201[0-9A-F]>|[‒–—―]", "", x)
+
+dat <- read.csv("data/indo_clean.csv", stringsAsFactors = TRUE)
+dat$rx <- factor(dat$rx, levels = c("Placebo", "Indomethacin"))
+
+# Effect measures from a 2x2 (treated vs control), with Wald 95% CIs.
+eff <- function(a, b, c, d) {
+  # a = events treated, b = non-events treated, c = events control, d = non-events control
+  n1 <- a + b; n0 <- c + d; p1 <- a / n1; p0 <- c / n0
+  rr <- p1 / p0
+  se_lrr <- sqrt(1/a - 1/n1 + 1/c - 1/n0)
+  or <- (a / b) / (c / d)
+  se_lor <- sqrt(1/a + 1/b + 1/c + 1/d)
+  arr <- p0 - p1
+  se_arr <- sqrt(p1 * (1 - p1) / n1 + p0 * (1 - p0) / n0)
+  list(p1 = p1, p0 = p0,
+       rr = rr, rr_l = exp(log(rr) - 1.96 * se_lrr), rr_u = exp(log(rr) + 1.96 * se_lrr),
+       or = or, or_l = exp(log(or) - 1.96 * se_lor), or_u = exp(log(or) + 1.96 * se_lor),
+       arr = arr, arr_l = arr - 1.96 * se_arr, arr_u = arr + 1.96 * se_arr,
+       nnt = 1 / arr, nnt_l = 1 / (arr + 1.96 * se_arr), nnt_u = 1 / (arr - 1.96 * se_arr))
+}
+```
+
+# Background and question
+
+A randomised controlled trial can do more than show that a treatment works. It
+can quantify **how much** it helps, in terms a clinician and a patient can act
+on: the absolute risk reduction, the relative risk, and the **number needed to
+treat (NNT)**, the number of patients you must treat to prevent one event.
+
+This report analyses a real, published placebo-controlled trial (Elmunzer and
+colleagues, *New England Journal of Medicine*, 2012). **602 patients** at high
+risk of complications from ERCP (a procedure on the bile and pancreatic ducts)
+were randomised to a single dose of **rectal indomethacin** or **placebo**. The
+primary endpoint was **post-ERCP pancreatitis (PEP)**, a painful and sometimes
+serious inflammation of the pancreas.
+
+# Baseline balance
+
+Randomisation should make the two groups comparable before treatment. We check
+this first.
+
+```{r baseline, results='asis'}
+bt <- dat |>
+  select(rx, age, gender, risk, risk_group, prior_pep, sod, psphinc, difcan, train) |>
+  tbl_summary(by = rx,
+              label = list(age ~ "Age (years)", gender ~ "Sex",
+                           risk ~ "Risk score", risk_group ~ "Risk group",
+                           prior_pep ~ "Prior pancreatitis", sod ~ "Sphincter of Oddi dysfunction",
+                           psphinc ~ "Pancreatic sphincterotomy", difcan ~ "Difficult cannulation",
+                           train ~ "Trainee involved")) |>
+  add_p() |>
+  modify_header(label ~ "**Characteristic**") |>
+  modify_caption("**Table 1. Baseline characteristics by treatment arm**")
+cat(strip_dash(as_kable(bt)), sep = "\n")
+```
+
+The arms were well matched on age, sex, risk score and every procedural risk
+factor (all p-values large), confirming that randomisation produced comparable
+groups. Any difference in pancreatitis can therefore be attributed to the
+treatment.
+
+# Primary efficacy: how big is the benefit?
+
+```{r primary}
+tab <- table(dat$rx, dat$pep)              # rows: Placebo, Indomethacin
+a <- tab["Indomethacin", "Yes"]; b <- tab["Indomethacin", "No"]
+c <- tab["Placebo", "Yes"];      d <- tab["Placebo", "No"]
+e <- eff(a, b, c, d)
+chip <- chisq.test(tab)$p.value
+res <- tibble::tibble(
+  Measure = c("PEP, placebo", "PEP, indomethacin",
+              "Absolute risk reduction (ARR)", "Relative risk (RR)",
+              "Relative risk reduction", "Odds ratio (OR)",
+              "Number needed to treat (NNT)"),
+  Value = c(sprintf("%.1f%%", e$p0 * 100),
+            sprintf("%.1f%%", e$p1 * 100),
+            sprintf("%.1f pp (95%% CI %.1f to %.1f)", e$arr*100, e$arr_l*100, e$arr_u*100),
+            sprintf("%.2f (95%% CI %.2f to %.2f)", e$rr, e$rr_l, e$rr_u),
+            sprintf("%.0f%%", (1 - e$rr) * 100),
+            sprintf("%.2f (95%% CI %.2f to %.2f)", e$or, e$or_l, e$or_u),
+            sprintf("%.0f (95%% CI %.0f to %.0f)", e$nnt, e$nnt_l, e$nnt_u)))
+knitr::kable(res, caption = "Primary endpoint: effect of indomethacin vs placebo")
+cat(sprintf("\nChi-square p-value: %.4f\n", chip))
+```
+
+```{r primary-plot, fig.height=4.4}
+pd <- dat |> group_by(rx) |>
+  summarise(rate = mean(pep_event), n = n(), ev = sum(pep_event), .groups = "drop")
+ggplot(pd, aes(rx, rate, fill = rx)) +
+  geom_col(width = 0.6) +
+  geom_text(aes(label = sprintf("%.1f%%\n(%d/%d)", rate*100, ev, n)),
+            vjust = -0.25, fontface = "bold", size = 4.2) +
+  scale_fill_manual(values = PAL, guide = "none") +
+  scale_y_continuous(labels = percent, limits = c(0, 0.235), expand = c(0, 0)) +
+  annotate("segment", x = 1, xend = 2, y = 0.205, yend = 0.205, colour = INK) +
+  annotate("text", x = 1.5, y = 0.222,
+           label = sprintf("Absolute risk reduction %.1f points  |  NNT %.0f",
+                           e$arr*100, e$nnt), fontface = "bold", colour = CORAL) +
+  labs(title = "Pancreatitis after ERCP, by treatment arm",
+       x = NULL, y = "Incidence of pancreatitis")
+```
+
+Indomethacin roughly **halved** the incidence of pancreatitis, from
+`r sprintf("%.1f%%", e$p0*100)` on placebo to `r sprintf("%.1f%%", e$p1*100)`.
+The absolute risk reduction of `r sprintf("%.1f", e$arr*100)` percentage points
+translates into a **number needed to treat of about `r round(e$nnt)`**: treat
+roughly `r round(e$nnt)` high-risk patients with one cheap suppository to prevent
+one case of pancreatitis. That is an unusually efficient preventive effect.
+
+# Adjusted analysis
+
+Randomisation already balances the arms, but adjusting for baseline risk factors
+gives a more precise estimate and shows the effect holds independent of them.
+
+```{r adjusted}
+fit <- glm(pep_event ~ rx + risk + age + gender + train,
+           family = binomial, data = dat)
+adj <- tidy(fit, exponentiate = TRUE, conf.int = TRUE) |>
+  filter(term != "(Intercept)") |>
+  mutate(label = recode(term,
+    rxIndomethacin = "Indomethacin vs placebo", risk = "Risk score (per point)",
+    age = "Age (per year)", genderMale = "Male vs female",
+    trainYes = "Trainee involved"))
+ggplot(adj, aes(estimate, fct_rev(label))) +
+  geom_vline(xintercept = 1, linetype = "dashed", colour = "grey50") +
+  geom_pointrange(aes(xmin = conf.low, xmax = conf.high), colour = ACC, linewidth = 0.9) +
+  geom_text(aes(label = sprintf("%.2f (%.2f to %.2f)", estimate, conf.low, conf.high)),
+            vjust = -0.9, size = 3.2) +
+  scale_x_log10(limits = c(0.2, 9), breaks = c(0.25, 0.5, 1, 2, 4)) +
+  labs(title = "Adjusted odds ratios for pancreatitis after ERCP",
+       subtitle = "Odds ratio below 1 means lower risk; horizontal bars are 95% CIs",
+       x = "Adjusted odds ratio (log scale)", y = NULL)
+```
+
+```{r adjusted-or}
+aor <- adj |> filter(term == "rxIndomethacin")
+cat(sprintf("Adjusted OR for indomethacin: %.2f (95%% CI %.2f to %.2f), p = %.4f\n",
+            aor$estimate, aor$conf.low, aor$conf.high, aor$p.value))
+```
+
+After adjusting for the composite risk score, age, sex and trainee involvement,
+indomethacin remained associated with roughly **half the odds** of pancreatitis,
+and the effect was statistically significant. The composite risk score was, as
+expected, a strong independent predictor of the outcome.
+
+# Subgroup analysis: who benefits?
+
+A key clinical question is whether the benefit is consistent across patient
+types, or concentrated in some. We estimate the relative risk within each
+subgroup and test for an interaction (effect modification).
+
+```{r subgroups, fig.height=5.6}
+subs <- list(
+  "Overall" = rep(TRUE, nrow(dat)),
+  "Lower risk (<=2.5)"  = dat$risk_group == "Lower risk (<=2.5)",
+  "Higher risk (>2.5)"  = dat$risk_group == "Higher risk (>2.5)",
+  "SOD: no"  = dat$sod == "No",   "SOD: yes" = dat$sod == "Yes",
+  "Prior pancreatitis: no"  = dat$prior_pep == "No",
+  "Prior pancreatitis: yes" = dat$prior_pep == "Yes",
+  "Female" = dat$gender == "Female", "Male" = dat$gender == "Male",
+  "Trainee: no" = dat$train == "No", "Trainee: yes" = dat$train == "Yes")
+
+rows <- lapply(names(subs), function(nm) {
+  s <- dat[subs[[nm]], ]
+  t <- table(factor(s$rx, levels = c("Placebo","Indomethacin")), s$pep)
+  if (any(t[, "Yes"] == 0)) return(NULL)
+  ee <- eff(t["Indomethacin","Yes"], t["Indomethacin","No"],
+            t["Placebo","Yes"], t["Placebo","No"])
+  data.frame(group = nm, rr = ee$rr, lo = ee$rr_l, hi = ee$rr_u,
+             n = nrow(s))
+})
+sub_df <- do.call(rbind, rows)
+sub_df$group <- factor(sub_df$group, levels = rev(sub_df$group))
+
+ggplot(sub_df, aes(rr, group)) +
+  geom_vline(xintercept = 1, linetype = "dashed", colour = "grey50") +
+  geom_pointrange(aes(xmin = lo, xmax = hi),
+                  colour = ifelse(sub_df$group == "Overall", CORAL, ACC),
+                  linewidth = 0.8) +
+  geom_text(aes(label = sprintf("RR %.2f (n=%d)", rr, n)), hjust = -0.12,
+            size = 3.1, nudge_y = 0.18) +
+  scale_x_log10(limits = c(0.1, 5), breaks = c(0.25, 0.5, 1, 2)) +
+  labs(title = "Relative risk of pancreatitis (indomethacin vs placebo) by subgroup",
+       subtitle = "RR below 1 favours indomethacin; bars are 95% CIs",
+       x = "Relative risk (log scale)", y = NULL)
+```
+
+```{r interaction}
+p_risk  <- anova(glm(pep_event ~ rx * risk_group, binomial, dat), test = "LRT")$`Pr(>Chi)`[4]
+p_sod   <- anova(glm(pep_event ~ rx * sod, binomial, dat), test = "LRT")$`Pr(>Chi)`[4]
+p_prior <- anova(glm(pep_event ~ rx * prior_pep, binomial, dat), test = "LRT")$`Pr(>Chi)`[4]
+cat(sprintf("Interaction p-values:  risk group = %.2f | SOD = %.2f | prior pancreatitis = %.2f\n",
+            p_risk, p_sod, p_prior))
+```
+
+The point estimates favour indomethacin in essentially every subgroup, and no
+interaction test is significant (all p > 0.05). In plain terms, the benefit is
+**consistent across patient types**: there is no good evidence that any group
+fails to benefit, so the treatment can be applied broadly to high-risk patients
+rather than restricted to a subset.
+
+# Results
+
+```{r summary, echo=FALSE}
+```
+
+This section states the findings in the style of a clinical journal.
+
+Among `r nrow(dat)` patients at high risk for post-ERCP pancreatitis randomised
+to rectal indomethacin or placebo, the arms were well balanced at baseline
+(Table 1). Post-ERCP pancreatitis occurred in `r a` of `r a+b`
+(`r sprintf("%.1f%%", e$p1*100)`) patients given indomethacin, compared with
+`r c` of `r c+d` (`r sprintf("%.1f%%", e$p0*100)`) given placebo (relative risk
+`r sprintf("%.2f", e$rr)`; 95% CI, `r sprintf("%.2f", e$rr_l)` to
+`r sprintf("%.2f", e$rr_u)`; P = `r sprintf("%.3f", chip)`). This corresponds to
+an absolute risk reduction of `r sprintf("%.1f", e$arr*100)` percentage points
+and a number needed to treat of `r round(e$nnt)` (95% CI, `r round(e$nnt_l)` to
+`r round(e$nnt_u)`). The effect persisted after adjustment for the composite risk
+score, age, sex and trainee involvement (adjusted odds ratio
+`r sprintf("%.2f", aor$estimate)`; 95% CI, `r sprintf("%.2f", aor$conf.low)` to
+`r sprintf("%.2f", aor$conf.high)`; P = `r sprintf("%.3f", aor$p.value)`). The
+treatment effect was consistent across pre-specified subgroups, with no
+significant interaction by risk group, sphincter of Oddi dysfunction or history
+of prior pancreatitis.
+
+# Conclusions and clinical implications
+
+In this randomised, placebo-controlled trial, a single dose of rectal
+indomethacin approximately halved the risk of post-ERCP pancreatitis in
+high-risk patients, with a number needed to treat of about `r round(e$nnt)`. The
+benefit was large, statistically robust, adjusted-analysis stable and uniform
+across subgroups. Given that the intervention is inexpensive, single-dose and
+widely available, these results support routine prophylactic rectal indomethacin
+for patients at high risk of this complication.
+
+# Limitations
+
+The trial enrolled patients at elevated risk of pancreatitis, so the absolute
+benefit and NNT apply to that population and would be smaller in average-risk
+patients. The bleeding safety endpoint was too sparsely recorded in this dataset
+to analyse, so this report addresses efficacy only. Subgroup analyses have
+limited power and are exploratory. As with any single trial, confirmation in
+other settings strengthens the case, which subsequent studies of this
+intervention have provided.
+
+---
+
+*Built in R (dplyr, gtsummary, broom, ggplot2) from the `indo_rct` dataset in the
+medicaldata package, a real published randomised controlled trial. Author:
+Kingsley Amegah.*
